@@ -1,7 +1,23 @@
 FROM node:24-slim
 
-# --- System tools + Python packages ---
-# build-essential installed and purged in the same layer to avoid size bloat
+# --- 清华 apt 镜像 ---
+RUN mv /etc/apt/sources.list.d/debian.sources /etc/apt/debian.sources.bak \
+    && echo \
+'Types: deb deb-src\n\
+URIs: http://mirrors.tuna.tsinghua.edu.cn/debian\n\
+Suites: trixie trixie-updates trixie-backports\n\
+Components: main contrib non-free non-free-firmware\n\
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\
+\n\
+Types: deb deb-src\n\
+URIs: http://mirrors.tuna.tsinghua.edu.cn/debian-security\n\
+Suites: trixie-security\n\
+Components: main contrib non-free non-free-firmware\n\
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' \
+    > /etc/apt/sources.list.d/debian.sources
+
+# --- 系统工具 + Python 包 ---
+# build-essential 在同一层安装并清理，避免镜像体积膨胀
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git curl vim net-tools ca-certificates \
         python3 python3-pip \
@@ -10,14 +26,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         gh tmux \
     && ln -s /usr/bin/batcat /usr/local/bin/bat \
+    && pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
     && pip install --break-system-packages fastmcp langsmith \
     && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache/pip
 
-# --- Claude Code ---
+# --- npm 镜像 ---
+RUN npm config set registry https://registry.npmmirror.com
+
+# --- Claude Code（通过代理下载，绕过 storage.googleapis.com 封锁）---
+ARG INSTALL_PROXY
 RUN GCS="https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases" \
-    && VERSION=$(curl -fsSL "${GCS}/latest") \
-    && curl -fsSL "${GCS}/${VERSION}/linux-x64/claude" -o /usr/local/bin/claude \
+    && VERSION=$(curl -fsSL --proxy ${INSTALL_PROXY} "${GCS}/latest") \
+    && curl -fsSL --proxy ${INSTALL_PROXY} "${GCS}/${VERSION}/linux-x64/claude" -o /usr/local/bin/claude \
     && chmod +x /usr/local/bin/claude
 
 # --- Go runtime ---
@@ -39,17 +60,15 @@ COPY claude-user-config/CLAUDE.md /root/.claude/CLAUDE.md
 # --- Pre-built agents ---
 COPY agents/ /root/.claude/agents/
 
-# --- Claude Code Skills ---
-RUN git clone --depth=1 https://github.com/ComposioHQ/awesome-claude-skills /tmp/awesome-claude-skills \
-    && mkdir -p /root/.claude/skills \
-    && cp -r /tmp/awesome-claude-skills/changelog-generator     /root/.claude/skills/changelog-generator \
-    && cp -r /tmp/awesome-claude-skills/skill-creator           /root/.claude/skills/skill-creator \
-    && cp -r /tmp/awesome-claude-skills/content-research-writer /root/.claude/skills/content-research-writer \
-    && cp -r /tmp/awesome-claude-skills/mcp-builder             /root/.claude/skills/mcp-builder \
-    && cp -r /tmp/awesome-claude-skills/langsmith-fetch         /root/.claude/skills/langsmith-fetch \
-    && cp -r /tmp/awesome-claude-skills/file-organizer          /root/.claude/skills/file-organizer \
-    && cp -r /tmp/awesome-claude-skills/document-skills         /root/.claude/skills/document-skills \
-    && rm -rf /tmp/awesome-claude-skills
+# --- Claude Code Skills (copied from local, GitHub inaccessible in China) ---
+RUN mkdir -p /root/.claude/skills
+COPY awesome-claude-skills/changelog-generator     /root/.claude/skills/changelog-generator
+COPY awesome-claude-skills/skill-creator           /root/.claude/skills/skill-creator
+COPY awesome-claude-skills/content-research-writer /root/.claude/skills/content-research-writer
+COPY awesome-claude-skills/mcp-builder             /root/.claude/skills/mcp-builder
+COPY awesome-claude-skills/langsmith-fetch         /root/.claude/skills/langsmith-fetch
+COPY awesome-claude-skills/file-organizer          /root/.claude/skills/file-organizer
+COPY awesome-claude-skills/document-skills         /root/.claude/skills/document-skills
 
 # --- Project-level agent behavior baseline ---
 COPY CLAUDE.md /root/CLAUDE.md

@@ -1,145 +1,145 @@
 # Claude Sandbox
 
-A Docker-based environment for running [Claude Code](https://claude.ai/code) as a persistent, self-contained AI coding agent. The container ships with a curated set of MCP servers, pre-built sub-agents, and Claude skills ready to use out of the box.
+基于 Docker 的持久化 AI 编程代理运行环境，用于运行 [Claude Code](https://claude.ai/code)。容器内置精选 MCP 服务器、预构建子代理和 Claude 技能，开箱即用。
 
-## What's inside
+## 内置组件
 
-| Component | Details |
-|-----------|---------|
-| **Claude Code** | Latest binary, installed at build time from official GCS release channel |
-| **Runtimes** | Node.js 24, Python 3, Go 1.24 |
-| **CLI tools** | `git`, `gh`, `ripgrep`, `fd`, `jq`, `fzf`, `bat`, `sqlite3`, `tmux`, `vim` |
-| **MCP servers** | `filesystem`, `fetch`, `memory`, `github`, `brave-search`, `sqlite` |
-| **Sub-agents** | `api-designer`, `code-reviewer`, `debugger`, `devops`, `doc-writer`, `git-assistant`, `security-auditor`, `test-writer` |
-| **Skills** | Pulled from [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) at build time |
-| **Python libs** | `fastmcp`, `langsmith` |
+| 组件 | 说明 |
+|------|------|
+| **Claude Code** | 构建时从官方 GCS 发布渠道安装最新二进制 |
+| **运行时** | Node.js 24、Python 3、Go 1.24 |
+| **CLI 工具** | `git`、`gh`、`ripgrep`、`fd`、`jq`、`fzf`、`bat`、`sqlite3`、`tmux`、`vim` |
+| **MCP 服务器** | `filesystem`、`fetch`、`memory`、`github`、`brave-search`、`sqlite` |
+| **子代理** | `api-designer`、`code-reviewer`、`debugger`、`devops`、`doc-writer`、`git-assistant`、`security-auditor`、`test-writer` |
+| **技能** | 构建时从 [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) 拉取 |
+| **Python 库** | `fastmcp`、`langsmith` |
 
-## Prerequisites
+## 前置条件
 
-- Docker with Compose
-- An [Anthropic API key](https://console.anthropic.com/)
-- Optional: GitHub personal access token, Brave Search API key
+- Docker 及 Compose
+- [Anthropic API 密钥](https://console.anthropic.com/)
+- 可选：GitHub Personal Access Token、Brave Search API 密钥
 
-## Setup
+## 快速开始
 
-**1. Copy and fill in environment variables**
+**1. 配置环境变量**
 
 ```bash
 cp env.example .env
 ```
 
-Edit `.env`:
+编辑 `.env`：
 
 ```
 GITHUB_TOKEN=ghp_...
 BRAVE_API_KEY=BSA...
 ```
 
-**2. Copy and edit the Compose file**
+**2. 配置 Compose 文件**
 
 ```bash
 cp docker-compose.yaml.example docker-compose.yaml
 ```
 
-Edit `docker-compose.yaml`:
-- Set `ANTHROPIC_AUTH_TOKEN` to your Anthropic API key
-- Set the workspace volume mount to your local project path:
+编辑 `docker-compose.yaml`：
+- 将 `ANTHROPIC_AUTH_TOKEN` 设置为你的 Anthropic API 密钥
+- 将工作区卷挂载路径改为本地项目目录：
   ```yaml
   volumes:
     - /path/to/your/workspace:/root/workspace
   ```
 
-**3. Build the image**
+**3. 构建镜像**
 
 ```bash
 ./run_build.sh 2.0
 ```
 
-Or build manually:
+或手动构建：
 
 ```bash
 docker build -t claude_sandbox:2.0 .
 ```
 
-**4. Start the container**
+**4. 启动容器**
 
 ```bash
 docker compose up -d
 ```
 
-**5. Open a shell and start Claude**
+**5. 进入容器并启动 Claude**
 
 ```bash
 docker exec -it claude-sandbox bash
 claude
 ```
 
-## Directory structure
+## 目录结构
 
 ```
 .
-├── Dockerfile                  # Image definition
-├── docker-compose.yaml.example # Compose template (copy to docker-compose.yaml)
-├── env.example                 # Environment variable template (copy to .env)
-├── run_build.sh                # Build helper script
-├── CLAUDE.md                   # Agent behavior baseline (mounted into container)
+├── Dockerfile                  # 镜像定义
+├── docker-compose.yaml.example # Compose 模板（复制为 docker-compose.yaml）
+├── env.example                 # 环境变量模板（复制为 .env）
+├── run_build.sh                # 构建辅助脚本
+├── CLAUDE.md                   # 代理行为基线（挂载至容器内）
 ├── claude-user-config/
-│   ├── settings.json           # Claude Code settings: MCP servers, hooks, env
-│   └── CLAUDE.md               # User-level runtime context for the agent
-└── agents/                     # Pre-built Claude sub-agent definitions
+│   ├── settings.json           # Claude Code 配置：MCP 服务器、钩子、环境变量
+│   └── CLAUDE.md               # 用户级运行时上下文
+└── agents/                     # 预构建 Claude 子代理定义
 ```
 
-## MCP servers
+## MCP 服务器
 
-Configured in `claude-user-config/settings.json` and available to Claude automatically:
+在 `claude-user-config/settings.json` 中配置，Claude 自动加载：
 
-| Server | Purpose | Requires |
-|--------|---------|---------|
-| `filesystem` | Read/write files under `/root` | — |
-| `fetch` | HTTP fetch tool | — |
-| `memory` | Persistent key-value memory | — |
-| `github` | GitHub API access | `GITHUB_TOKEN` in `.env` |
-| `brave-search` | Web search | `BRAVE_API_KEY` in `.env` |
-| `sqlite` | SQLite at `/root/data.db` | — |
+| 服务器 | 用途 | 依赖 |
+|--------|------|------|
+| `filesystem` | 读写 `/root` 下的文件 | — |
+| `fetch` | HTTP 请求工具 | — |
+| `memory` | 持久化键值存储 | — |
+| `github` | GitHub API 访问 | `.env` 中的 `GITHUB_TOKEN` |
+| `brave-search` | 网页搜索 | `.env` 中的 `BRAVE_API_KEY` |
+| `sqlite` | SQLite 数据库（`/root/data.db`） | — |
 
-## Sub-agents
+## 子代理
 
-Sub-agents live in `agents/` and are loaded automatically by Claude Code. Invoke them by name during a session, e.g. `use the code-reviewer agent on this PR`.
+子代理定义位于 `agents/`，由 Claude Code 自动加载。在会话中按名称调用，例如：`使用 code-reviewer 代理审查这个 PR`。
 
-| Agent | Role |
-|-------|------|
-| `api-designer` | Design and review API contracts |
-| `code-reviewer` | Structured code review (critical / warnings / suggestions) |
-| `debugger` | Root-cause analysis and fix suggestions |
-| `devops` | Docker, CI/CD, infrastructure tasks |
-| `doc-writer` | Generate and improve documentation |
-| `git-assistant` | Commit messages, branch strategy, history cleanup |
-| `security-auditor` | OWASP-style security review |
-| `test-writer` | Write and improve test coverage |
+| 代理 | 职责 |
+|------|------|
+| `api-designer` | API 契约设计与审查 |
+| `code-reviewer` | 结构化代码审查（严重问题 / 警告 / 建议） |
+| `debugger` | 根因分析与修复建议 |
+| `devops` | Docker、CI/CD 及基础设施任务 |
+| `doc-writer` | 文档生成与改进 |
+| `git-assistant` | 提交信息、分支策略、历史清理 |
+| `security-auditor` | OWASP 风格安全审查 |
+| `test-writer` | 编写与改善测试覆盖率 |
 
-## Skills
+## 技能
 
-Skills are downloaded from [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) at image build time (no local copy needed). The following skills are installed:
+技能在镜像构建时从 [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) 下载，无需本地副本。已安装以下技能：
 
 `changelog-generator` · `skill-creator` · `content-research-writer` · `mcp-builder` · `langsmith-fetch` · `file-organizer` · `document-skills`
 
-## Configuration
+## 配置说明
 
-### Agent behavior baseline
+### 代理行为基线
 
-`CLAUDE.md` (repo root) is copied into the container at `/root/CLAUDE.md` and loaded as a project-level instruction file for every session. It enforces conventions around code style, git workflow, shell tool preferences, and response style.
+`CLAUDE.md`（仓库根目录）被复制到容器内的 `/root/CLAUDE.md`，作为每次会话的项目级指令文件，约束代码风格、Git 工作流、Shell 工具偏好和响应风格。
 
-### Claude Code settings
+### Claude Code 配置
 
-`claude-user-config/settings.json` controls:
-- MCP server registration
-- Environment variables injected into every Claude session (`FORCE_COLOR`, `PYTHONDONTWRITEBYTECODE`, etc.)
-- Experimental features (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`)
-- Hooks (e.g. logging session end times to `/tmp/claude-session.log`)
-- Teammate mode (`tmux`)
+`claude-user-config/settings.json` 控制：
+- MCP 服务器注册
+- 注入每次 Claude 会话的环境变量（`FORCE_COLOR`、`PYTHONDONTWRITEBYTECODE` 等）
+- 实验性功能（`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`）
+- 钩子（如将会话结束时间记录到 `/tmp/claude-session.log`）
+- 团队协作模式（`tmux`）
 
-## Security notes
+## 安全说明
 
-- Never commit `.env` or `docker-compose.yaml` — both are in `.gitignore`.
-- `ANTHROPIC_AUTH_TOKEN` goes in `docker-compose.yaml` (not `.env`) so it is never accidentally pushed.
-- The container runs as `root` inside an isolated Docker network (`network_mode: host` is used for MCP server connectivity — adjust if your threat model requires stricter isolation).
+- 不要提交 `.env` 或 `docker-compose.yaml`，两者均已加入 `.gitignore`。
+- `ANTHROPIC_AUTH_TOKEN` 放在 `docker-compose.yaml` 中（而非 `.env`），以防意外推送到代码仓库。
+- 容器以 `root` 用户运行，使用 `network_mode: host`（用于 MCP 服务器连通性）。如有更严格的安全要求，请调整网络模式。

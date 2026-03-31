@@ -10,6 +10,11 @@ services:
       - IS_SANDBOX=1
       - GOROOT=/usr/local/go
       - ANTHROPIC_AUTH_TOKEN=your_anthropic_auth_token_here
+      - ANTHROPIC_BASE_URL=http://YOUR_ANTHROPIC_BASE_URL/api
+      - GOPROXY=https://goproxy.cn,direct
+      - http_proxy=${PROXY_URL}
+      - https_proxy=${PROXY_URL}
+      - no_proxy=localhost,127.0.0.1
     env_file:
       - .env
     volumes:
