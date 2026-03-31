@@ -1,0 +1,16 @@
+services:
+  claude:
+    image: "claude_sandbox:2.0"
+    container_name: "claude-sandbox"
+    network_mode: host
+    restart: "always"
+    cpu_count: 4
+    mem_limit: 4g
+    environment:
+      - IS_SANDBOX=1
+      - GOROOT=/usr/local/go
+      - ANTHROPIC_AUTH_TOKEN=your_anthropic_auth_token_here
+    env_file:
+      - .env
+    volumes:
+      - /path/to/your/workspace:/root/workspace
