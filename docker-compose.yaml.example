@@ -10,6 +10,10 @@ services:
       - IS_SANDBOX=1
       - GOROOT=/usr/local/go
       - ANTHROPIC_AUTH_TOKEN=your_anthropic_auth_token_here
+      - DISABLE_TELEMETRY=1
+      - CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+      - CLAUDE_CODE_USE_BEDROCK=1
+      - CLAUDE_CODE_USE_VERTEX=1
     env_file:
       - .env
     volumes:
