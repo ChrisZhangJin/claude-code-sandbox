@@ -15,6 +15,10 @@ services:
       - http_proxy=${PROXY_URL}
       - https_proxy=${PROXY_URL}
       - no_proxy=localhost,127.0.0.1
+      - DISABLE_TELEMETRY=1
+      - CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+      - CLAUDE_CODE_USE_BEDROCK=1
+      - CLAUDE_CODE_USE_VERTEX=1
     env_file:
       - .env
     volumes:
