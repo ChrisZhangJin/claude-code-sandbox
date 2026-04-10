@@ -3,7 +3,7 @@ name: Docker Image
 on:
   push:
     branches:
-      - main
+      - main-cn
   workflow_dispatch:
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/claude-sandbox
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/claude-sandbox-cn
           tags: |
             type=raw,value=latest
             type=sha,prefix=,format=short
