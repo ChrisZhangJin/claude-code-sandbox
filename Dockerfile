@@ -60,6 +60,10 @@ COPY claude-user-config/CLAUDE.md /root/.claude/CLAUDE.md
 # --- Pre-built agents ---
 COPY agents/ /root/.claude/agents/
 
+# --- GSD: Get Shit Done workflow system ---
+# Installs hooks, skills, and merges settings.json; harmless if already present
+RUN npx --yes get-shit-done-cc@latest || true
+
 # --- Claude Code Skills (copied from local, GitHub inaccessible in China) ---
 RUN mkdir -p /root/.claude/skills
 COPY awesome-claude-skills/changelog-generator     /root/.claude/skills/changelog-generator
