@@ -1,27 +1,92 @@
 # Runtime Environment
 
-This Claude Code instance is running inside a Docker container hosted in China.
+This Claude Code instance runs inside a Docker container as an automated agent.
 
 **Container facts:**
 - Working directory root: `/root`
 - Workspace is mounted at `/root/workspace`
-- Go, Node.js, Python3 are all available
+- Node.js and Python3 are available; Go is optional (check `go version`)
 - Shell is `/bin/bash`
 
-**Network environment:**
-- Direct access to Google, GitHub, npm (official), PyPI (official), and most foreign services is blocked by GFW.
-- A SOCKS5 proxy is configured and working: `socks5h://192.168.32.101:18387`
-- `http_proxy` and `https_proxy` env vars are already set — most CLI tools (`curl`, `wget`, `git`, `gh`) will use it automatically.
-- **Always use `socks5h://` not `socks5://`** — the `h` suffix makes the proxy resolve DNS, bypassing GFW DNS poisoning. Using `socks5://` will appear to connect but time out due to poisoned local DNS.
+---
 
-**Mirror configuration (no proxy needed):**
-- apt: Tsinghua mirror (`mirrors.tuna.tsinghua.edu.cn`)
-- pip: Tsinghua mirror
-- npm: npmmirror (`registry.npmmirror.com`)
-- Go modules: `https://goproxy.cn`
+## Network self-configuration
 
-**When a network request fails:**
-1. Check if `http_proxy`/`https_proxy` are set (`echo $http_proxy`).
-2. If the tool ignores env vars, pass the proxy explicitly (e.g. `curl --proxy socks5h://192.168.32.101:18387 ...`).
-3. For `git` over HTTPS: `git config --global http.proxy socks5h://192.168.32.101:18387`
-4. For `npm` if mirror is insufficient: `npm config set proxy socks5h://192.168.32.101:18387`
+On first run, detect whether the network is restricted (GFW / corporate proxy)
+and configure mirrors accordingly. Run these checks in order:
+
+```
+1. curl -sf --max-time 5 https://registry.npmjs.org/-/ping   → npm reachable?
+2. curl -sf --max-time 5 https://pypi.org/simple/             → PyPI reachable?
+3. curl -sf --max-time 5 https://storage.googleapis.com       → Google APIs reachable?
+```
+
+If **all fail**, apply the China mirror table below.
+If **some fail**, apply only the relevant entries.
+If **all pass**, no action needed.
+
+---
+
+## China mirror reference
+
+Use this table only when the network check above indicates restricted access.
+
+### apt (Debian)
+
+Replace `/etc/apt/sources.list.d/debian.sources` with:
+
+```
+Types: deb deb-src
+URIs: http://mirrors.tuna.tsinghua.edu.cn/debian
+Suites: trixie trixie-updates trixie-backports
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb deb-src
+URIs: http://mirrors.tuna.tsinghua.edu.cn/debian-security
+Suites: trixie-security
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+```
+
+### npm
+
+```
+npm config set registry https://registry.npmmirror.com
+```
+
+### pip
+
+```
+pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+```
+
+### Go modules (if Go is installed)
+
+```
+go env -w GOPROXY=https://goproxy.cn
+```
+
+### Docker Hub mirror
+
+Set `registry-mirrors` in `/etc/docker/daemon.json` (host-level, not in container):
+
+```json
+{ "registry-mirrors": ["https://docker.m.daocloud.io"] }
+```
+
+---
+
+## Proxy fallback
+
+If mirrors are insufficient (some upstreams are not mirrored), set environment
+variables so CLI tools route through a SOCKS5 proxy:
+
+```bash
+export http_proxy=socks5h://<PROXY_HOST>:<PORT>
+export https_proxy=socks5h://<PROXY_HOST>:<PORT>
+```
+
+**Always use `socks5h://`** (with `h`) so DNS is resolved by the proxy,
+bypassing local DNS poisoning. Plain `socks5://` will appear to connect
+but time out on GFW-poisoned domains.

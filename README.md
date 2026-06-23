@@ -74,18 +74,82 @@ docker exec -it claude-sandbox bash
 claude
 ```
 
+## Agent 镜像（自动化智能体）
+
+除交互式镜像外，本仓库还提供一个专为自动化代理设计的轻量镜像。移除了所有人工交互组件，适用于 CI/CD、监控、日志分析、数据库查询等无人值守场景。
+
+### 与交互式镜像的区别
+
+| | 交互式 (`Dockerfile`) | Agent (`Dockerfile.agent`) |
+|---|---|---|
+| **基础镜像** | `node:24-slim` | `node:24-slim` |
+| **GSD 工作流** | 完整安装 + 钩子 | 已移除 |
+| **交互工具** | tmux、vim、fzf、bat | 已移除 |
+| **Go 运行时** | 固定安装 (~300MB) | 可选 (`--build-arg INSTALL_GO=true`) |
+| **Docker CLI** | 固定安装 (~70MB) | 可选 (`--build-arg INSTALL_DOCKER=true`) |
+| **MCP 服务器** | 7 个 | 2 个 (sqlite, github) |
+| **技能** | 30+ 个 | 5 个自动化相关 |
+| **中国镜像** | 硬编码在 Dockerfile | 运行时知识库，agent 自动检测并配置 |
+| **预估大小** | ~900MB | ~250MB (最小) |
+
+### 构建 Agent 镜像
+
+```bash
+# 最小镜像 (~250MB)
+./run_build_agent.sh 1.0
+
+# 使用中国镜像源构建
+./run_build_agent.sh 1.0 --china
+
+# 包含 Go + Docker CLI
+./run_build_agent.sh 1.0 --go --docker
+```
+
+手动构建：
+
+```bash
+docker build -f Dockerfile.agent \
+  --build-arg APT_MIRROR=mirrors.tuna.tsinghua.edu.cn \
+  --build-arg NPM_REGISTRY=https://registry.npmmirror.com \
+  --build-arg INSTALL_GO=false \
+  -t claude_agent:1.0 .
+```
+
+### 构建参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `INSTALL_GO` | `false` | 安装 Go 运行时 (+300MB) |
+| `INSTALL_DOCKER` | `false` | 安装 Docker CLI (+70MB) |
+| `DOCKER_VERSION` | `28.3.2` | Docker CLI 版本 |
+| `APT_MIRROR` | `""` (官方源) | apt 镜像地址 |
+| `NPM_REGISTRY` | `https://registry.npmjs.org` | npm 注册表 |
+| `PIP_INDEX_URL` | `https://pypi.org/simple` | PyPI 索引 |
+| `GO_MODULE_PROXY` | `https://proxy.golang.org` | Go 模块代理 |
+
+### 中国部署说明
+
+Agent 镜像默认使用国际源构建。部署到中国网络环境时，agent 会在首次运行时自动检测网络状况并配置镜像（参见容器内 `/root/.claude/CLAUDE.md`）。也可以在构建时直接使用中国镜像：
+
+```bash
+./run_build_agent.sh 1.0 --china
+```
+
 ## 目录结构
 
 ```
 .
-├── Dockerfile                  # 镜像定义
+├── Dockerfile                  # 交互式镜像定义
+├── Dockerfile.agent            # Agent 镜像定义（自动化智能体）
 ├── docker-compose.yaml.example # Compose 模板（复制为 docker-compose.yaml）
 ├── env.example                 # 环境变量模板（复制为 .env）
-├── run_build.sh                # 构建辅助脚本
+├── run_build.sh                # 交互式镜像构建脚本
+├── run_build_agent.sh          # Agent 镜像构建脚本
 ├── CLAUDE.md                   # 代理行为基线（挂载至容器内）
 ├── claude-user-config/
-│   ├── settings.json           # Claude Code 配置：MCP 服务器、钩子、环境变量
-│   └── CLAUDE.md               # 用户级运行时上下文
+│   ├── settings.json           # 交互式配置：MCP 服务器、钩子、环境变量
+│   ├── settings.agent.json     # Agent 配置：最小化钩子、精简 MCP
+│   └── CLAUDE.md               # 运行时上下文 + 中国镜像知识库
 └── agents/                     # 预构建 Claude 子代理定义
 ```
 
