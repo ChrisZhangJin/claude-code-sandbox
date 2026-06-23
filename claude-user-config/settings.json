@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/root/.claude/hooks/gsd-check-update.js\""
+            "command": "\"/usr/local/bin/node\" \"/root/.claude/hooks/gsd-check-update.js\""
           }
         ]
       },
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/root/.claude/hooks/gsd-context-monitor.js\"",
+            "command": "\"/usr/local/bin/node\" \"/root/.claude/hooks/gsd-context-monitor.js\"",
             "timeout": 10
           }
         ]
@@ -55,6 +55,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/local/bin/node\" \"/root/.claude/hooks/gsd-read-injection-scanner.js\"",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -63,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/root/.claude/hooks/gsd-prompt-guard.js\"",
+            "command": "\"/usr/local/bin/node\" \"/root/.claude/hooks/gsd-prompt-guard.js\"",
             "timeout": 5
           }
         ]
@@ -73,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/root/.claude/hooks/gsd-read-guard.js\"",
+            "command": "\"/usr/local/bin/node\" \"/root/.claude/hooks/gsd-read-guard.js\"",
             "timeout": 5
           }
         ]
@@ -83,7 +93,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/root/.claude/hooks/gsd-workflow-guard.js\"",
+            "command": "\"/usr/local/bin/node\" \"/root/.claude/hooks/gsd-workflow-guard.js\"",
             "timeout": 5
           }
         ]
@@ -100,13 +110,22 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "node \"/root/.claude/hooks/gsd-statusline.js\""
+  },
   "skipWebFetchPreflight": true,
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "teammateMode": "tmux",
   "telemetry": false,
   "autoUpdate": false,
   "preferredShell": "/bin/bash",
-  "theme": "dark",
-  "teammateMode": "tmux",
   "mcpServers": {
+    "playwright": {
+      "type": "http",
+      "url": "http://192.168.32.101:8931/mcp"
+    },
     "filesystem": {
       "command": "npx",
       "args": [
@@ -157,10 +176,5 @@
         "/root/data.db"
       ]
     }
-  },
-  "skipDangerousModePermissionPrompt": true,
-  "statusLine": {
-    "type": "command",
-    "command": "node \"/root/.claude/hooks/gsd-statusline.js\""
   }
 }
