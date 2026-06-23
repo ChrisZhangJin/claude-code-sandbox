@@ -19,13 +19,20 @@ Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' \
 # --- 系统工具 + Python 包 ---
 # build-essential 在同一层安装并清理，避免镜像体积膨胀
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git curl vim net-tools ca-certificates \
-        python3 python3-pip \
-        ripgrep fd-find jq tree wget unzip less \
-        fzf bat sqlite3 make \
-        build-essential \
-        gh tmux \
-    && ln -s /usr/bin/batcat /usr/local/bin/bat \
+    git curl vim ca-certificates \
+    python3 python3-pip \
+    ripgrep fd-find jq tree unzip less \
+    fzf bat sqlite3 make \
+    build-essential openssh-client \
+    gh tmux \
+    git-lfs patch diffutils \
+    file xxd \
+    procps lsof strace \
+    dnsutils \
+    parallel entr \
+    zip tar \
+    && ln -s $(which batcat) /usr/local/bin/bat \
+    && ln -s $(which fdfind) /usr/local/bin/fd \
     && pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
     && pip install --break-system-packages fastmcp langsmith \
     && apt-get purge -y --auto-remove build-essential \
@@ -34,15 +41,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # --- npm 镜像 ---
 RUN npm config set registry https://registry.npmmirror.com
 
-# --- Claude Code（通过代理下载，绕过 storage.googleapis.com 封锁）---
-ARG INSTALL_PROXY
-RUN GCS="https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases" \
-    && VERSION=$(curl -fsSL --proxy ${INSTALL_PROXY} "${GCS}/latest") \
-    && curl -fsSL --proxy ${INSTALL_PROXY} "${GCS}/${VERSION}/linux-x64/claude" -o /usr/local/bin/claude \
-    && chmod +x /usr/local/bin/claude
+# --- Claude Code（通过 npmmirror 安装，无需代理）---
+RUN npm install -g @anthropic-ai/claude-code \
+    && npm cache clean --force
+
+# --- Docker CLI（本地静态二进制）---
+COPY docker-29.4.0.tgz /tmp/docker.tgz
+RUN tar xzf /tmp/docker.tgz --strip-components=1 -C /usr/local/bin docker/docker \
+    && chmod +x /usr/local/bin/docker \
+    && rm /tmp/docker.tgz
 
 # --- Go runtime ---
-COPY --from=golang:1.24-alpine /usr/local/go /usr/local/go
+COPY --from=golang:1.25.9-alpine /usr/local/go /usr/local/go
 ENV GOROOT=/usr/local/go
 ENV PATH=$PATH:/usr/local/go/bin
 
@@ -62,10 +72,13 @@ COPY agents/ /root/.claude/agents/
 
 # --- GSD: Get Shit Done workflow system ---
 # Installs hooks, skills, and merges settings.json; harmless if already present
-RUN npx --yes get-shit-done-cc@latest || true
+RUN npx --yes get-shit-done-cc@latest  \
+    && rm -rf /root/.npm/_npx
 
 # --- Claude Code Skills (copied from local, GitHub inaccessible in China) ---
 RUN mkdir -p /root/.claude/skills
+
+# awesome-claude-skills (original set)
 COPY awesome-claude-skills/changelog-generator     /root/.claude/skills/changelog-generator
 COPY awesome-claude-skills/skill-creator           /root/.claude/skills/skill-creator
 COPY awesome-claude-skills/content-research-writer /root/.claude/skills/content-research-writer
@@ -73,6 +86,41 @@ COPY awesome-claude-skills/mcp-builder             /root/.claude/skills/mcp-buil
 COPY awesome-claude-skills/langsmith-fetch         /root/.claude/skills/langsmith-fetch
 COPY awesome-claude-skills/file-organizer          /root/.claude/skills/file-organizer
 COPY awesome-claude-skills/document-skills         /root/.claude/skills/document-skills
+
+# mattpocock/skills — cloned from GitHub via proxy (includes in-progress & personal skills)
+ARG INSTALL_PROXY
+RUN git -c http.proxy="${INSTALL_PROXY}" clone --depth 1 \
+        https://github.com/mattpocock/skills.git /tmp/mattpocock-skills \
+    && for dir in /tmp/mattpocock-skills/skills/*/*; do \
+           [ -d "$dir" ] && cp -r "$dir" /root/.claude/skills/; \
+       done \
+    && rm -rf /tmp/mattpocock-skills
+
+# addyosmani/agent-skills — spec→ship lifecycle + engineering discipline
+COPY awesome-claude-skills/using-agent-skills               /root/.claude/skills/using-agent-skills
+COPY awesome-claude-skills/idea-refine                      /root/.claude/skills/idea-refine
+COPY awesome-claude-skills/spec-driven-development          /root/.claude/skills/spec-driven-development
+COPY awesome-claude-skills/planning-and-task-breakdown      /root/.claude/skills/planning-and-task-breakdown
+COPY awesome-claude-skills/incremental-implementation       /root/.claude/skills/incremental-implementation
+COPY awesome-claude-skills/test-driven-development          /root/.claude/skills/test-driven-development
+COPY awesome-claude-skills/context-engineering              /root/.claude/skills/context-engineering
+COPY awesome-claude-skills/source-driven-development        /root/.claude/skills/source-driven-development
+COPY awesome-claude-skills/doubt-driven-development         /root/.claude/skills/doubt-driven-development
+COPY awesome-claude-skills/frontend-ui-engineering          /root/.claude/skills/frontend-ui-engineering
+COPY awesome-claude-skills/api-and-interface-design         /root/.claude/skills/api-and-interface-design
+COPY awesome-claude-skills/browser-testing-with-devtools    /root/.claude/skills/browser-testing-with-devtools
+COPY awesome-claude-skills/debugging-and-error-recovery     /root/.claude/skills/debugging-and-error-recovery
+COPY awesome-claude-skills/code-review-and-quality          /root/.claude/skills/code-review-and-quality
+COPY awesome-claude-skills/code-simplification              /root/.claude/skills/code-simplification
+COPY awesome-claude-skills/security-and-hardening           /root/.claude/skills/security-and-hardening
+COPY awesome-claude-skills/performance-optimization         /root/.claude/skills/performance-optimization
+COPY awesome-claude-skills/git-workflow-and-versioning      /root/.claude/skills/git-workflow-and-versioning
+COPY awesome-claude-skills/ci-cd-and-automation             /root/.claude/skills/ci-cd-and-automation
+COPY awesome-claude-skills/deprecation-and-migration        /root/.claude/skills/deprecation-and-migration
+COPY awesome-claude-skills/documentation-and-adrs           /root/.claude/skills/documentation-and-adrs
+COPY awesome-claude-skills/shipping-and-launch              /root/.claude/skills/shipping-and-launch
+COPY awesome-claude-skills/agent-skills-hooks               /root/.claude/skills/agent-skills-hooks
+COPY awesome-claude-skills/agent-skills-references          /root/.claude/skills/agent-skills-references
 
 # --- Project-level agent behavior baseline ---
 COPY CLAUDE.md /root/CLAUDE.md

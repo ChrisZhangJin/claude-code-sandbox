@@ -2,3 +2,4 @@
 .proxy
 *.tar
 *.tar.gz
+*.tgz

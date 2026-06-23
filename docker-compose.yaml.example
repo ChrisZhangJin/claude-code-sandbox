@@ -23,3 +23,4 @@ services:
       - .env
     volumes:
       - /path/to/your/workspace:/root/workspace
+      - /var/run/docker.sock:/var/run/docker.sock

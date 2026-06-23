@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+# Load PROXY_URL and other vars from .env (never committed)
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
 if [[ -z "${1:-}" ]]; then
   echo "Usage: $0 <version>"
   echo "Example: $0 2.1"
