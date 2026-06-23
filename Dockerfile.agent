@@ -1,0 +1,76 @@
+FROM node:24-slim
+
+# ── Build args ────────────────────────────────────────────────
+ARG INSTALL_GO=false
+ARG INSTALL_DOCKER=false
+ARG APT_MIRROR=""
+ARG NPM_REGISTRY="https://registry.npmjs.org"
+ARG PIP_INDEX_URL="https://pypi.org/simple"
+ARG GO_MODULE_PROXY="https://proxy.golang.org"
+
+# ── Configure apt mirror ─────────────────────────────────────
+RUN if [ -n "$APT_MIRROR" ]; then \
+      rm -f /etc/apt/sources.list.d/debian.sources \
+      && printf 'Types: deb deb-src\nURIs: http://%s/debian\nSuites: trixie trixie-updates trixie-backports\nComponents: main contrib non-free non-free-firmware\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\nTypes: deb deb-src\nURIs: http://%s/debian-security\nSuites: trixie-security\nComponents: main contrib non-free non-free-firmware\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' "$APT_MIRROR" "$APT_MIRROR" > /etc/apt/sources.list.d/debian.sources; \
+    fi
+
+# ── Essential packages ────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git curl ca-certificates \
+        python3 python3-pip \
+        ripgrep fd-find jq sqlite3 make \
+        openssh-client dnsutils less \
+        tar zip \
+    && ln -s $(which fdfind) /usr/local/bin/fd \
+    && pip config set global.index-url "$PIP_INDEX_URL" \
+    && pip install --break-system-packages fastmcp langsmith \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache/pip
+
+# ── npm registry ──────────────────────────────────────────────
+RUN npm config set registry "$NPM_REGISTRY"
+
+# ── Claude Code ───────────────────────────────────────────────
+RUN npm install -g @anthropic-ai/claude-code \
+    && npm cache clean --force
+
+# ── Optional: Go runtime ──────────────────────────────────────
+RUN if [ "$INSTALL_GO" = "true" ]; then \
+      curl -fsSL https://go.dev/dl/go1.25.9.linux-amd64.tar.gz \
+        | tar xz -C /usr/local; \
+    fi
+ENV GOROOT=/usr/local/go
+ENV PATH=$PATH:/usr/local/go/bin
+RUN if [ "$INSTALL_GO" = "true" ]; then \
+      go env -w GOPROXY="$GO_MODULE_PROXY"; \
+    fi
+
+# ── Optional: Docker CLI ──────────────────────────────────────
+ARG DOCKER_VERSION=28.3.2
+RUN if [ "$INSTALL_DOCKER" = "true" ]; then \
+      curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
+        | tar xz --strip-components=1 -C /usr/local/bin docker/docker \
+      && chmod +x /usr/local/bin/docker; \
+    fi
+
+# ── Git config ────────────────────────────────────────────────
+RUN git config --global user.email "agent@container" && \
+    git config --global user.name "Agent"
+
+# ── Claude Code configuration ─────────────────────────────────
+RUN mkdir -p /root/.claude/agents /root/.claude/skills
+COPY claude-user-config/settings.agent.json /root/.claude/settings.json
+COPY claude-user-config/CLAUDE.md            /root/.claude/CLAUDE.md
+COPY agents/                                 /root/.claude/agents/
+
+# ── Skills: automation-focused subset ─────────────────────────
+COPY awesome-claude-skills/debugging-and-error-recovery /root/.claude/skills/debugging-and-error-recovery
+COPY awesome-claude-skills/ci-cd-and-automation         /root/.claude/skills/ci-cd-and-automation
+COPY awesome-claude-skills/security-and-hardening       /root/.claude/skills/security-and-hardening
+COPY awesome-claude-skills/git-workflow-and-versioning  /root/.claude/skills/git-workflow-and-versioning
+COPY awesome-claude-skills/code-review-and-quality      /root/.claude/skills/code-review-and-quality
+
+# ── Project-level baseline (overridable per-project) ──────────
+COPY CLAUDE.md /root/CLAUDE.md
+
+WORKDIR /root
+CMD ["tail", "-f", "/dev/null"]

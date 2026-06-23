@@ -1,0 +1,45 @@
+{
+  "env": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "GH_NO_UPDATE_NOTIFIER": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date +%Y-%m-%dT%H:%M:%S%z)] agent-stop\" >> /tmp/claude-agent.log"
+          }
+        ]
+      }
+    ]
+  },
+  "skipWebFetchPreflight": true,
+  "skipDangerousModePermissionPrompt": true,
+  "telemetry": false,
+  "autoUpdate": false,
+  "preferredShell": "/bin/bash",
+  "mcpServers": {
+    "sqlite": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite",
+        "/root/data.db"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
