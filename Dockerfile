@@ -45,6 +45,11 @@ RUN npm config set registry https://registry.npmmirror.com
 RUN npm install -g @anthropic-ai/claude-code \
     && npm cache clean --force
 
+# --- TypeScript LSP + CodeGraph CLI ---
+RUN npm install -g typescript-language-server typescript @colbymchenry/codegraph \
+    && npm cache clean --force \
+    && codegraph telemetry off
+
 # --- Docker CLI（本地静态二进制）---
 COPY docker-29.4.0.tgz /tmp/docker.tgz
 RUN tar xzf /tmp/docker.tgz --strip-components=1 -C /usr/local/bin docker/docker \
@@ -95,6 +100,33 @@ RUN git -c http.proxy="${INSTALL_PROXY}" clone --depth 1 \
            [ -d "$dir" ] && cp -r "$dir" /root/.claude/skills/; \
        done \
     && rm -rf /tmp/mattpocock-skills
+
+# Unlock mattpocock skills that ship with `disable-model-invocation: true`
+RUN sed -i '/^disable-model-invocation: true$/d' \
+        /root/.claude/skills/setup-matt-pocock-skills/SKILL.md \
+        /root/.claude/skills/ubiquitous-language/SKILL.md
+
+# --- Claude Code plugin marketplaces (cloned via proxy, populated into cache) ---
+RUN mkdir -p /root/.claude/plugins/marketplaces /root/.claude/plugins/cache \
+    && git -c http.proxy="${INSTALL_PROXY}" clone --depth 1 \
+        https://github.com/anthropics/claude-plugins-official.git \
+        /root/.claude/plugins/marketplaces/claude-plugins-official \
+    && git -c http.proxy="${INSTALL_PROXY}" clone --depth 1 \
+        https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git \
+        /root/.claude/plugins/marketplaces/ui-ux-pro-max-skill \
+    && rm -rf /root/.claude/plugins/marketplaces/*/.git \
+    && mkdir -p /root/.claude/plugins/cache/claude-plugins-official/context7/latest \
+    && cp -r /root/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/context7/. \
+              /root/.claude/plugins/cache/claude-plugins-official/context7/latest/ \
+    && mkdir -p /root/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.4 \
+    && cp -r /root/.claude/plugins/marketplaces/claude-plugins-official/plugins/security-guidance/. \
+              /root/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.4/ \
+    && mkdir -p /root/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0 \
+    && cp -r /root/.claude/plugins/marketplaces/claude-plugins-official/plugins/typescript-lsp/. \
+              /root/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0/ \
+    && mkdir -p /root/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.6.2 \
+    && cp -r /root/.claude/plugins/marketplaces/ui-ux-pro-max-skill/. \
+              /root/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.6.2/
 
 # addyosmani/agent-skills — spec→ship lifecycle + engineering discipline
 COPY awesome-claude-skills/using-agent-skills               /root/.claude/skills/using-agent-skills
