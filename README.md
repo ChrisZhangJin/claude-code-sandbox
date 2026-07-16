@@ -9,7 +9,7 @@
 | **Claude Code** | 构建时从官方 GCS 发布渠道安装最新二进制 |
 | **运行时** | Node.js 24、Python 3、Go 1.25 |
 | **CLI 工具** | `git`、`gh`、`ripgrep`、`fd`、`jq`、`fzf`、`bat`、`sqlite3`、`tmux`、`vim`、`docker` |
-| **MCP 服务器** | `filesystem`、`fetch`、`memory`、`github`、`brave-search`、`sqlite`、`git`、`sequential-thinking`、`time` |
+| **MCP 服务器** | `filesystem`、`fetch`、`memory`、`github`、`brave-search`、`git`、`sequential-thinking`、`time` |
 | **子代理** | `architect`、`database-agent`、`data-engineer`、`incident-runner`、`product-manager`、`ux-writer` |
 | **技能** | 构建时从多个来源拉取（见下方技能章节） |
 | **Python 库** | `fastmcp`、`langsmith`、`uv` |
@@ -101,7 +101,6 @@ claude
 | `memory` | 持久化键值存储 | — |
 | `github` | GitHub API 访问 | `.env` 中的 `GITHUB_TOKEN` |
 | `brave-search` | 网页搜索 | `.env` 中的 `BRAVE_API_KEY` |
-| `sqlite` | SQLite 数据库（`/root/data.db`） | — |
 
 ## 子代理
 
