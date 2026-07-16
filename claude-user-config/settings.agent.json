@@ -23,14 +23,6 @@
   "autoUpdate": false,
   "preferredShell": "/bin/bash",
   "mcpServers": {
-    "sqlite": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sqlite",
-        "/root/data.db"
-      ]
-    },
     "github": {
       "command": "npx",
       "args": [
@@ -38,7 +30,7 @@
         "@modelcontextprotocol/server-github"
       ],
       "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
       }
     }
   }

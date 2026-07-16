@@ -87,7 +87,7 @@ claude
 | **交互工具** | tmux、vim、fzf、bat | 已移除 |
 | **Go 运行时** | 固定安装 (~300MB) | 可选 (`--build-arg INSTALL_GO=true`) |
 | **Docker CLI** | 固定安装 (~70MB) | 可选 (`--build-arg INSTALL_DOCKER=true`) |
-| **MCP 服务器** | 7 个 | 2 个 (sqlite, github) |
+| **MCP 服务器** | 7 个 | 1 个 (github) |
 | **技能** | 30+ 个 | 5 个自动化相关 |
 | **中国镜像** | 硬编码在 Dockerfile | 运行时知识库，agent 自动检测并配置 |
 | **预估大小** | ~900MB | ~250MB (最小) |
@@ -121,7 +121,7 @@ docker build -f Dockerfile.agent \
 |------|--------|------|
 | `INSTALL_GO` | `false` | 安装 Go 运行时 (+300MB) |
 | `INSTALL_DOCKER` | `false` | 安装 Docker CLI (+70MB) |
-| `DOCKER_VERSION` | `28.3.2` | Docker CLI 版本 |
+| `DOCKER_VERSION` | `29.4.0` | Docker CLI 版本 |
 | `APT_MIRROR` | `""` (官方源) | apt 镜像地址 |
 | `NPM_REGISTRY` | `https://registry.npmjs.org` | npm 注册表 |
 | `PIP_INDEX_URL` | `https://pypi.org/simple` | PyPI 索引 |
