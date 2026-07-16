@@ -135,6 +135,17 @@ Agent 镜像默认使用国际源构建。部署到中国网络环境时，agent
 ./run_build_agent.sh 1.0 --china
 ```
 
+### Lark / 飞书 桥接
+
+Agent 镜像预装了 [`lark-channel-bridge`](https://github.com/zarazhangrui/lark-coding-agent-bridge)，可将容器内的 `claude` 代理接入飞书 / Lark 聊天：直接私聊或在群里 `@bot` 即可驱动本地编程代理。首次运行需扫码绑定 PersonalAgent 应用：
+
+```bash
+lark-channel-bridge run          # 前台首启 + 扫码向导
+lark-channel-bridge start        # 后台服务
+```
+
+配置写入 `~/.lark-channel/config.json`（需在运行时完成绑定，无法在构建期预置）。
+
 ## 目录结构
 
 ```

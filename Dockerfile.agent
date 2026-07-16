@@ -29,8 +29,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ── npm registry ──────────────────────────────────────────────
 RUN npm config set registry "$NPM_REGISTRY"
 
-# ── Claude Code ───────────────────────────────────────────────
-RUN npm install -g @anthropic-ai/claude-code \
+# ── Claude Code + Lark/Feishu bridge ──────────────────────────
+# lark-channel-bridge: drive the local claude agent from Feishu/Lark chat
+# (https://github.com/zarazhangrui/lark-coding-agent-bridge)
+RUN npm install -g @anthropic-ai/claude-code lark-channel-bridge \
     && npm cache clean --force
 
 # ── Optional: Go runtime ──────────────────────────────────────
