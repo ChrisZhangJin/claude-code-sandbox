@@ -36,3 +36,16 @@ In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the re
 
 If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
 <!-- CODEGRAPH_END -->
+
+## Optional tools (NOT installed in base image)
+
+The base image is intentionally lean. These tools are available via `bash /root/install-optional-tools.sh` if a task needs them:
+
+- **hadolint** — Dockerfile linter (~65 MB)
+- **shellcheck** — bash script linter (~35 MB, pulls perl)
+- **prettier** — code formatter (~10 MB; usually installed per-project)
+- **markdownlint-cli2** — markdown linter (~11 MB; usually per-project)
+- **fastmcp + langsmith** — Python libs for building MCP servers / debugging LangChain agents (~120 MB with deps; only for AI/LLM tooling work)
+
+These Claude Code plugins load on-demand from marketplaces (no manual install needed; first use will auto-download):
+- `feature-dev`, `pr-review-toolkit`, `commit-commands`

@@ -7,12 +7,13 @@
 | 组件 | 说明 |
 |------|------|
 | **Claude Code** | 构建时从官方 GCS 发布渠道安装最新二进制 |
-| **运行时** | Node.js 24、Python 3、Go 1.24 |
-| **CLI 工具** | `git`、`gh`、`ripgrep`、`fd`、`jq`、`fzf`、`bat`、`sqlite3`、`tmux`、`vim` |
-| **MCP 服务器** | `filesystem`、`fetch`、`memory`、`github`、`brave-search`、`sqlite` |
+| **运行时** | Node.js 24、Python 3、Go 1.25 |
+| **CLI 工具** | `git`、`gh`、`ripgrep`、`fd`、`jq`、`fzf`、`bat`、`sqlite3`、`tmux`、`vim`、`docker` |
+| **MCP 服务器** | `filesystem`、`fetch`、`memory`、`github`、`brave-search`、`sqlite`、`git`、`sequential-thinking`、`time` |
 | **子代理** | `architect`、`database-agent`、`data-engineer`、`incident-runner`、`product-manager`、`ux-writer` |
 | **技能** | 构建时从多个来源拉取（见下方技能章节） |
-| **Python 库** | `fastmcp`、`langsmith` |
+| **Python 库** | `fastmcp`、`langsmith`、`uv` |
+| **可选工具** | `hadolint` / `shellcheck` / `prettier` / `markdownlint-cli2`（按需：`bash /root/install-optional-tools.sh`） |
 
 ## 前置条件
 
@@ -52,13 +53,13 @@ cp docker-compose.yaml.example docker-compose.yaml
 **3. 构建镜像**
 
 ```bash
-./run_build.sh 2.0
+./run_build.sh 2.6
 ```
 
 或手动构建：
 
 ```bash
-docker build -t claude_sandbox:2.0 .
+docker build -t claude_sandbox:2.6 .
 ```
 
 **4. 启动容器**

@@ -1,6 +1,6 @@
 services:
   claude:
-    image: "claude_sandbox:2.0"
+    image: "claude_sandbox:2.6"
     container_name: "claude-sandbox"
     network_mode: host
     restart: "always"

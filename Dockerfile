@@ -1,4 +1,39 @@
+FROM node:24-slim AS npm-builder
+
+ARG INSTALL_PROXY
+
+# --- 清华 npm 镜像 ---
+RUN npm config set registry https://registry.npmmirror.com
+
+# --- npm globals: Claude Code + TypeScript LSP + CodeGraph ---
+# 版本固定：避免每月 @latest 漂移撑大层并击穿 build cache（手动 bump）
+# 不在 builder 里清 cache：让 final stage COPY --from=builder 后整体清理
+RUN npm install -g \
+        @anthropic-ai/claude-code@2.1.211 \
+        typescript-language-server@5.3.0 typescript@7.0.2 \
+        @colbymchenry/codegraph@1.4.1 \
+    && codegraph telemetry off
+
+# --- GSD: Get Shit Done workflow system ---
+# 装到 /root/.claude；final stage 只 COPY 需要的子目录
+RUN npx --yes get-shit-done-cc@1.42.3
+
+# --- Cleanup builder stage artefacts (npx cache, npm cache) ---
+RUN rm -rf /root/.npm/_npx /root/.npm/_cacache /root/.npm/_logs
+
+# ============================================================================
+# Docker CLI extraction — throwaway stage keeps the 86MB tarball out of the
+# final image; only the ~42MB docker binary is copied across.
+FROM node:24-slim AS docker-extract
+COPY docker-29.4.0.tgz /tmp/docker.tgz
+RUN tar xzf /tmp/docker.tgz --strip-components=1 -C /usr/local/bin docker/docker \
+    && chmod +x /usr/local/bin/docker
+
+# ============================================================================
+
 FROM node:24-slim
+
+ARG INSTALL_PROXY
 
 # --- 清华 apt 镜像 ---
 RUN mv /etc/apt/sources.list.d/debian.sources /etc/apt/debian.sources.bak \
@@ -34,27 +69,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s $(which batcat) /usr/local/bin/bat \
     && ln -s $(which fdfind) /usr/local/bin/fd \
     && pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
-    && pip install --break-system-packages fastmcp langsmith \
+    && pip install --break-system-packages uv \
     && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache/pip
+# fastmcp / langsmith 移到 install-optional-tools.sh（~120MB，非核心工作负载）
 
-# --- npm 镜像 ---
-RUN npm config set registry https://registry.npmmirror.com
+# --- Copy npm globals from builder — node_modules only ---
+# 只 COPY node_modules，避免重复带入 base 已有的 ~116MB node 二进制；
+# 手动重建 4 个 global bin symlink（node/npm/npx/corepack/yarn 由 base 提供）。
+COPY --from=npm-builder /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf ../lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe  /usr/local/bin/claude \
+    && ln -sf ../lib/node_modules/@colbymchenry/codegraph/npm-shim.js     /usr/local/bin/codegraph \
+    && ln -sf ../lib/node_modules/typescript/bin/tsc                      /usr/local/bin/tsc \
+    && ln -sf ../lib/node_modules/typescript-language-server/lib/cli.mjs  /usr/local/bin/typescript-language-server
 
-# --- Claude Code（通过 npmmirror 安装，无需代理）---
-RUN npm install -g @anthropic-ai/claude-code \
-    && npm cache clean --force
+COPY --from=npm-builder /root/.claude/skills /root/.claude/skills
+COPY --from=npm-builder /root/.claude/agents /root/.claude/agents
+COPY --from=npm-builder /root/.claude/hooks /root/.claude/hooks
+COPY --from=npm-builder /root/.claude/package.json /root/.claude/package.json
+COPY --from=npm-builder /root/.claude/gsd-file-manifest.json /root/.claude/gsd-file-manifest.json
 
-# --- TypeScript LSP + CodeGraph CLI ---
-RUN npm install -g typescript-language-server typescript @colbymchenry/codegraph \
-    && npm cache clean --force \
-    && codegraph telemetry off
+# --- Docker CLI（从 docker-extract stage 取二进制，tarball 不进入镜像）---
+COPY --from=docker-extract /usr/local/bin/docker /usr/local/bin/docker
 
-# --- Docker CLI（本地静态二进制）---
-COPY docker-29.4.0.tgz /tmp/docker.tgz
-RUN tar xzf /tmp/docker.tgz --strip-components=1 -C /usr/local/bin docker/docker \
-    && chmod +x /usr/local/bin/docker \
-    && rm /tmp/docker.tgz
+# --- docker compose (CLI plugin; not bundled in docker.tgz, not in trixie repo) ---
+RUN mkdir -p /usr/local/lib/docker/cli-plugins \
+    && curl -sSL --proxy "${INSTALL_PROXY}" -o /usr/local/lib/docker/cli-plugins/docker-compose \
+        https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 # --- Go runtime ---
 COPY --from=golang:1.25.9-alpine /usr/local/go /usr/local/go
@@ -75,10 +117,9 @@ COPY claude-user-config/CLAUDE.md /root/.claude/CLAUDE.md
 # --- Pre-built agents ---
 COPY agents/ /root/.claude/agents/
 
-# --- GSD: Get Shit Done workflow system ---
-# Installs hooks, skills, and merges settings.json; harmless if already present
-RUN npx --yes get-shit-done-cc@latest  \
-    && rm -rf /root/.npm/_npx
+# --- Optional tools installer (NOT auto-installed; run on demand) ---
+COPY install-optional-tools.sh /root/install-optional-tools.sh
+RUN chmod +x /root/install-optional-tools.sh
 
 # --- Claude Code Skills (copied from local, GitHub inaccessible in China) ---
 RUN mkdir -p /root/.claude/skills
@@ -93,7 +134,6 @@ COPY awesome-claude-skills/file-organizer          /root/.claude/skills/file-org
 COPY awesome-claude-skills/document-skills         /root/.claude/skills/document-skills
 
 # mattpocock/skills — cloned from GitHub via proxy (includes in-progress & personal skills)
-ARG INSTALL_PROXY
 RUN git -c http.proxy="${INSTALL_PROXY}" clone --depth 1 \
         https://github.com/mattpocock/skills.git /tmp/mattpocock-skills \
     && for dir in /tmp/mattpocock-skills/skills/*/*; do \
@@ -118,15 +158,15 @@ RUN mkdir -p /root/.claude/plugins/marketplaces /root/.claude/plugins/cache \
     && mkdir -p /root/.claude/plugins/cache/claude-plugins-official/context7/latest \
     && cp -r /root/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/context7/. \
               /root/.claude/plugins/cache/claude-plugins-official/context7/latest/ \
-    && mkdir -p /root/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.4 \
+    && mkdir -p /root/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.6 \
     && cp -r /root/.claude/plugins/marketplaces/claude-plugins-official/plugins/security-guidance/. \
-              /root/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.4/ \
+              /root/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.6/ \
     && mkdir -p /root/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0 \
     && cp -r /root/.claude/plugins/marketplaces/claude-plugins-official/plugins/typescript-lsp/. \
               /root/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0/ \
-    && mkdir -p /root/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.6.2 \
+    && mkdir -p /root/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.11.0 \
     && cp -r /root/.claude/plugins/marketplaces/ui-ux-pro-max-skill/. \
-              /root/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.6.2/
+              /root/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.11.0/
 
 # addyosmani/agent-skills — spec→ship lifecycle + engineering discipline
 COPY awesome-claude-skills/using-agent-skills               /root/.claude/skills/using-agent-skills
@@ -151,8 +191,6 @@ COPY awesome-claude-skills/ci-cd-and-automation             /root/.claude/skills
 COPY awesome-claude-skills/deprecation-and-migration        /root/.claude/skills/deprecation-and-migration
 COPY awesome-claude-skills/documentation-and-adrs           /root/.claude/skills/documentation-and-adrs
 COPY awesome-claude-skills/shipping-and-launch              /root/.claude/skills/shipping-and-launch
-COPY awesome-claude-skills/agent-skills-hooks               /root/.claude/skills/agent-skills-hooks
-COPY awesome-claude-skills/agent-skills-references          /root/.claude/skills/agent-skills-references
 
 # --- Project-level agent behavior baseline ---
 COPY CLAUDE.md /root/CLAUDE.md
