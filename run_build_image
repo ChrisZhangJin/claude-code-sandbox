@@ -1,2 +1,0 @@
-docker build --build-arg INSTALL_PROXY="socks5h://192.168.32.101:18387" -t 192.168.32.101:5000/claude_sandbox:2.3 .
-

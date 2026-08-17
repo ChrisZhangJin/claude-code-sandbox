@@ -1,0 +1,13 @@
+# 日常
+docker build --build-arg INSTALL_PROXY="socks5h://192.168.32.101:18387" \
+    -t claude_sandbox:base -f Dockerfile .
+
+# +Go
+docker build --build-arg INSTALL_PROXY="socks5h://192.168.32.101:18387" \
+    --build-arg INSTALL_GO=1 \
+    -t claude_sandbox:go -f Dockerfile .
+
+# +Go+Rust
+docker build --build-arg INSTALL_PROXY="socks5h://192.168.32.101:18387" \
+    --build-arg INSTALL_GO=1 --build-arg INSTALL_RUST=1 \
+    -t claude_sandbox:full -f Dockerfile .
